@@ -55,8 +55,8 @@ MAKE_R1R2_FASTQ() {
         echo "File not found!"
     else
     echo "File found!"
-    for i in *R1*.fastq.gz;do mv "$i" ${FLOWCELL_PATH}/${READGROUP}/uBAM/read1/ ;done
-    for i in *R2*.fastq.gz;do mv "$i" ${FLOWCELL_PATH}/${READGROUP}/uBAM/read2/ ;done
+    for i in *R1*.fastq.gz;do mv "$i" ${FLOWCELL_PATH}/${READGROUP}/uBAM/read1/ ;done;wait
+    for i in *R2*.fastq.gz;do mv "$i" ${FLOWCELL_PATH}/${READGROUP}/uBAM/read2/ ;done;wait
     fi
     }
     #Process read1:
