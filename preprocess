@@ -47,11 +47,18 @@ export FLOWCELL=$(echo $(pwd) | cut -d "/" -f5);echo $FLOWCELL
 
 MAKE_R1R2_FASTQ() {
     READGROUP=$(echo $(pwd) | cut -d "/" -f6);echo $READGROUP
-    export SAMPLEP_PATH=$(pwd)
+    export SAMPLE_PATH=$(pwd)
     echo "Step2: Processing MAKE_R1R2_FASTQ ${READGROUP}"
-    mkdir -p uBAM uBAM/read1 uBAM/read2 
+    mkdir -p uBAM uBAM/read1 uBAM/read2
+    {
+    if [ ! -f *.fastq.gz ]; then
+        echo "File not found!"
+    else
+    echo "File found!"
     for i in *R1*.fastq.gz;do mv "$i" ${FLOWCELL_PATH}/${READGROUP}/uBAM/read1/ ;done
     for i in *R2*.fastq.gz;do mv "$i" ${FLOWCELL_PATH}/${READGROUP}/uBAM/read2/ ;done
+    fi
+    }
     #Process read1:
     cd ${SAMPLE_PATH}/uBAM/read1/
     for i in *.fastq.gz;do gunzip "$i" & done; wait
