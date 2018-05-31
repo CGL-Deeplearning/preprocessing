@@ -55,12 +55,12 @@ MAKE_R1R2_FASTQ() {
     #Process read1:
     cd ${SAMPLE_PATH}/uBAM/read1/
     for i in *.fastq.gz;do gunzip "$i" & done; wait
-    ls -1 *.fastq | sort | while read fn ; do cat "$fn" >> ${READGROUP}_R1.fastq;done
+    ls -1 *.fastq | sort | while read fn ; do cat "$fn" >> ${READGROUP}_R1.fastq;done; wait
     rm U*
     mv * ../
     cd ${SAMPLE_PATH}/uBAM/read2/
     for i in *.fastq.gz;do gunzip "$i" & done;wait
-    ls -1 *.fastq | sort | while read fn ; do cat "$fn" >> ${READGROUP}_R2.fastq;done
+    ls -1 *.fastq | sort | while read fn ; do cat "$fn" >> ${READGROUP}_R2.fastq;done; wait
     rm U*
     mv * ../
     cd ..
