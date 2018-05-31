@@ -1,0 +1,172 @@
+set -euo pipefail
+
+#Step1: Retrieve fastq files for flowcells (done separately for now). 
+
+#Step2-6 occur at the sample level. Samples are processed one at a time. Each sample is treated as a read group.
+#Most of the processing steps within the sample are done using multiple threads.
+#Base quality score recalibration (BQSR) can be done at the same time for all samples in a flow cell if 
+#all read groups are marked correctly in the bam meta data(Step3) and if coordinate sorted(step5).
+#Currently we are not doing BQSR since model performs well without it. May implement in future if tests
+#show significant performance improvements.
+
+
+#Note: This script works by dynamically parsing the directory path to match sample read groups and files. Test and adjust 
+#the script parser at indicated positions to ensure script accuracy and flow.
+
+#Ex: the variable READGROUP and FLOWCELL should dynamically parse the sample and the flowcell of the current process. 
+#To test, cd to any given sample of one of the flow cell. (Note: this assumes you used the previously given command to retrieve 
+#and construct fastq directories from GIAB ftp server). 
+
+#Trouble Shooting:
+#In sample directory use command `pwd` to show the current full path. 
+#The following command should give name of the sample as READGROUP. For example, Sample_U0a. 
+#If this command doesn't show the correct sample name, then adjust the field number depending on your path(-f6 to -f4, or -f7, etc).
+#Your path is parsed and delimited by each forward slash '/'. The field number selects the contents field
+#after that number delimiters have passed. 
+#In the directory path: /home/<user>/preprocessing/fl1_BH814YADXX/Sample_U0a, the sample name is in field 6. 
+
+#READGROUP=$(echo $(pwd) | cut -d "/" -f6)
+#FLOWCELL=$(echo $(pwd) | cut -d "/" -f5)
+#echo ${READGROUP}      #####READGROUP should output something like Sample_UXx
+#echo ${FLOWCELL}       #####FLOWCELL should output something like fl#_XXXXXXXX
+
+
+
+
+
+#Step2: MAKE_R1R2_FASTQ() - For given sample of a flowcell, creates uBAM directories. Unzips fastq.gz files 
+#from GIAB ftp server. Concatenates unzipped fastq's into 2 final fastq files (read1 and read2).
+#Currently we pre-process by treating each Sample_UXx as a readgroup, not each lane of Sample_UXx as a read group.
+#We do this because each flowcell is our actual library multiplexed from the same NA12787 genetic material. 
+#Therefore what we term 'Sample' actually comes from the same donor and functions more like a read group.
+#If you are using different our pipeline to pre-process your own 'samples'. Be sure to correctly distinguish
+#how Flowcell, Sample, Lane, and ReadGroups are defined for your samples. 
+
+#For our pre-processing of GIAB fastqs: Flowcell = Library, Sample = NA12878, Lane = ReadGroup = Sample_UXx = Read1 & Read2
+export FLOWCELL=$(echo $(pwd) | cut -d "/" -f5);echo $FLOWCELL
+
+MAKE_R1R2_FASTQ() {
+    READGROUP=$(echo $(pwd) | cut -d "/" -f6);echo $READGROUP
+    export SAMPLEP_PATH=$(pwd)
+    echo "Step2: Processing MAKE_R1R2_FASTQ ${READGROUP}"
+    mkdir -p uBAM uBAM/read1 uBAM/read2 
+    for i in *R1*.fastq.gz;do mv "$i" ${FLOWCELL_PATH}/${READGROUP}/uBAM/read1/ ;done
+    for i in *R2*.fastq.gz;do mv "$i" ${FLOWCELL_PATH}/${READGROUP}/uBAM/read2/ ;done
+    #Process read1:
+    cd ${SAMPLE_PATH}/uBAM/read1/
+    for i in *.fastq.gz;do gunzip "$i" & done; wait
+    ls -1 *.fastq | sort | while read fn ; do cat "$fn" >> ${READGROUP}_R1.fastq;done
+    rm U*
+    mv * ../
+    cd ${SAMPLE_PATH}/uBAM/read2/
+    for i in *.fastq.gz;do gunzip "$i" & done;wait
+    ls -1 *.fastq | sort | while read fn ; do cat "$fn" >> ${READGROUP}_R2.fastq;done
+    rm U*
+    mv * ../
+    cd ..
+    Read1_FASTQ=${READGROUP}_R1.fastq
+    Read2_FASTQ=${READGROUP}_R2.fastq
+    echo $Read1_FASTQ
+    echo $Read2_FASTQ
+    ls -lah
+    }
+
+MAKE_R1R2_FASTQ
+wait
+
+
+#Step3: Turn the read1 and read2 fastq files for Sample_UXx into a single unmapped bamfile. This is where
+#correctly distinguishing ReadGroup, sample, library, and platform becomes very important for downstream processes. 
+#Once again, for our pre-processing of GIAB fastqs: Flowcell = Library, Sample = NA12878, Lane = ReadGroup = Sample_UXx = Read1 & Read2
+FASTQ_TO_UBAM() {
+    READGROUP=$(echo $(pwd) | cut -d "/" -f6);echo $READGROUP
+    echo "Step3: Processing FASTQ_TO_UBAM ${READGROUP}"
+    (java -verbose:gc -XX:+UseParallelOldGC -XX:+AggressiveOpts -XX:ParallelGCThreads=56 -XX:ConcGCThreads=8 -Xmn25g  -Xms30g -jar ${PICARD} FastqToSam \
+    F1=${READGROUP}_R1.fastq \
+    F2=${READGROUP}_R2.fastq \
+    OUTPUT=${READGROUP}_unmapped.bam \
+    READ_GROUP_NAME="${READGROUP}" \
+    SAMPLE_NAME="NA12878" \
+    LB="${FLOWCELL}" \
+    PL="illumina" \
+    MAX_RECORDS_IN_RAM=10000000 \
+    USE_JDK_DEFLATER=true \
+    USE_JDK_INFLATER=true \
+    TMP_DIR=/tmp) >"fastq_to_ubam.log" 2>&1
+    ls -lah
+    export FASTQ_TO_UBAM_output="${READGROUP}_unmapped.bam"
+    echo $FASTQ_TO_UBAM_output
+    }
+FASTQ_TO_UBAM
+wait
+
+#Step 4: Mark adaptors for downstream cleaving.
+#This process uses the Picard tool MarkIlluminaAdapters to tag reads with adaptors for downstream cleaving (Step5a).
+#The specifications are set according to GATK's pre-processing best practices. Read more here and here.
+
+# In summary, this produces two files:
+#(1) The metrics file, {READGROUP}_markadpt_metrics.txt bins the number of tagged adapter bases versus the number of reads. 
+#(2) The {READGROUP}_markadpt.bam file, which is almost identical to the input BAM, except reads with adapter sequences will be marked with a tag in XT:i:# format, 
+#where # denotes the 5' starting position of the adapter sequence. At least six bases are required to mark a sequence. Reads without adapter sequence remain untagged.
+
+#By default, the tool uses Illumina adapter sequences. This is sufficient for our example data.
+#Adjust the default standard Illumina adapter sequences to any adapter sequence using the FIVE_PRIME_ADAPTER and THREE_PRIME_ADAPTER parameters. To clear and add new adapter sequences first set ADAPTERS to 'null' then specify each sequence with the parameter.
+
+MARK_ADAPTORS() {
+    READGROUP=$(echo $(pwd) | cut -d "/" -f6);echo $READGROUP
+    echo "Step4: Processing MARK_ADAPTORS ${READGROUP}"
+    (java -verbose:gc -XX:+UseParallelOldGC -XX:+AggressiveOpts -XX:ParallelGCThreads=56 -XX:ConcGCThreads=8 -Xmn25g  -Xms30g -jar ${PICARD} MarkIlluminaAdapters \
+    I=${READGROUP}_unmapped.bam \
+    O=${READGROUP}_markadpt.bam \
+    M=${READGROUP}_markadpt_metrics.txt \
+    MAX_RECORDS_IN_RAM=10000000 \
+    USE_JDK_DEFLATER=true \
+    USE_JDK_INFLATER=true \
+    TMP_DIR=/tmp)>"markadapters.log" 2>&1
+    }
+MARK_ADAPTORS
+wait
+
+#Step5: 3 piped processes: 
+#1.Removes adaptors from uBAM. uBAM -> FastQ.
+#2.BWA-mem to align read1 and read2 fastq files -> produces aligned sam file.
+#3.Merge BAM alignment
+
+BWA_MEM_MAKE_CLEAN_BAM() {
+    READGROUP=$(echo $(pwd) | cut -d "/" -f6)
+    echo "Step5: Processing BWA_MEM_MAKE_CLEAN_BAM ${READGROUP}"
+    (java  -XX:+UseParallelOldGC -XX:+AggressiveOpts -XX:ParallelGCThreads=8 -Xmn15g  -Xms40g -jar ${PICARD} SamToFastq \
+    I=${READGROUP}_markadpt.bam \
+    FASTQ=/dev/stdout \
+    CLIPPING_ATTRIBUTE=XT \
+    CLIPPING_ACTION=2 \
+    INTERLEAVE=true \
+    NON_PF=true\
+    MAX_RECORDS_IN_RAM=10000000 \
+    USE_JDK_DEFLATER=true \
+    USE_JDK_INFLATER=true \
+    TMP_DIR=/tmp|bwa mem -M -t 48 -p /home/louisecabansay/ref/GRCh38_full_analysis_set_plus_decoy_hla.fa /dev/stdin |java -XX:+UseParallelOldGC -XX:+AggressiveOpts -XX:ParallelGCThreads=8 -Xmn20g  -Xms30g -jar ${PICARD} MergeBamAlignment \
+    ALIGNED_BAM=/dev/stdin \
+    UNMAPPED_BAM=${READGROUP}_unmapped.bam \
+    OUTPUT=${READGROUP}_clean.bam \
+    R=/home/louisecabansay/ref/GRCh38_full_analysis_set_plus_decoy_hla.fa \
+    CREATE_INDEX=true \
+    ADD_MATE_CIGAR=true \
+    CLIP_ADAPTERS=false \
+    MAX_RECORDS_IN_RAM=10000000 \
+    INCLUDE_SECONDARY_ALIGNMENTS=true \
+    MAX_INSERTIONS_OR_DELETIONS=-1 \
+    PRIMARY_ALIGNMENT_STRATEGY=MostDistant \
+    ATTRIBUTES_TO_RETAIN=XS \
+    USE_JDK_DEFLATER=true \
+    USE_JDK_INFLATER=true \
+    TMP_DIR=/tmp)>"clean_bam.log" 2>&1
+    }
+
+BWA_MEM_MAKE_CLEAN_BAM
+wait
+READGROUP=$(echo $(pwd) | cut -d "/" -f6);echo $READGROUP
+ls -lah
+echo "Done with ${READGROUP} for Flowcell ${FLOWCELL}"
+  
+

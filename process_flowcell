@@ -1,0 +1,6 @@
+(export FLOWCELL_PATH=$(pwd);echo $FLOWCELL_PATH
+export FLOWCELL=$(echo $(pwd) | cut -d "/" -f5);echo $FLOWCELL
+
+for i in Sample*;do cd "$i"/;source ../preprocess; wait;cd ${FLOWCELL_PATH};done
+)>"run_preprocess.log" 2>&1
+

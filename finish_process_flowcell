@@ -1,0 +1,46 @@
+set -euo pipefail
+
+export FLOWCELL=$(echo $(pwd) | cut -d "/" -f5);echo $FLOWCELL
+export FLOWCELL_PATH=$(pwd);echo $FLOWCELL_PATH
+
+#move all clean bams from each sample to one directory
+mkdir -p all_samples
+for i in Sample*;do mv "$i"/uBAM/"$i"_clean.bam ${FLOWCELL_PATH}/all_samples/ ;done ;wait
+cd ${FLOWCELL_PATH}/all_samples/
+ALL_SAMPLEPATH=$(pwd)
+
+#create a dynamic array to specify all bams as input for Markdups
+for i in *_clean.bam;do echo "INPUT="${ALL_SAMPLEPATH}/"$i" >> all_samples.txt ;done ;wait
+readarray -t bam_array < all_samples.txt
+rm all_samples.txt
+export ${bam_array[@]}
+echo ${bam_array[@]}
+
+
+#run markduplicates on all samples. This will remove all duplicates while also merging all the bams into a single file
+echo "Step6: Processing MarkDuplicates ALL SAMPLES!"
+export FLOWCELL=$(echo $(pwd) | cut -d "/" -f5);echo $FLOWCELL
+(java -verbose:gc -XX:+UseParallelOldGC -XX:+AggressiveOpts -XX:ParallelGCThreads=56 -Xmn30g  -Xms60g -jar ${PICARD} MarkDuplicates \
+$(echo ${bam_array[@]}) \
+OUTPUT=${ALL_SAMPLEPATH}/{FLOWCELL}_allSamples_markdup.bam \
+METRICS_FILE=${ALL_SAMPLEPATH}/dupmetrics_${FLOWCELL}_allSamples.txt \
+CREATE_INDEX=true \
+REMOVE_DUPLICATES=true \
+MAX_RECORDS_IN_RAM=25000000 \
+ASSUME_SORT_ORDER=coordinate \
+USE_JDK_DEFLATER=true \
+USE_JDK_INFLATER=true \
+TMP_DIR=/tmp)>"markdup.log" 2>&1
+wait;
+
+
+#check coverage on all sample bam (should be between 20-30x)
+export FLOWCELL=$(echo $(pwd) | cut -d "/" -f5);echo $FLOWCELL
+echo "Plotting Coverage ${FLOWCELL}"
+(plotCoverage --bamfiles ${FLOWCELL}_allSamples_markdup.bam \
+--plotFile coverageplot_${FLOWCELL}_allSamples.png \
+--smartLabels \
+--plotTitle "Coverage of GIAB NA12878-${FLOWCELL}" \
+--outRawCounts rawcounts_${FLOWCELL}_allSamples \
+--plotFileFormat png \
+--numberOfProcessors max)>"coverage.log" 2>&1

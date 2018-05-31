@@ -1,0 +1,35 @@
+(export checkFLOWCELL_PATH=$(pwd);echo $checkFLOWCELL_PATH
+export checkFLOWCELL=$(echo $(pwd) | cut -d "/" -f5);echo $checkFLOWCELL
+for i in Sample*; do
+    #echo "$i"
+    export checkUNMAPPED_BAM=${checkFLOWCELL_PATH}/"$i"/uBAM/fastq_to_ubam.log
+    export checkMARKADPT_BAM=${checkFLOWCELL_PATH}/"$i"/uBAM/markadapters.log 
+    export checkCLEAN_BAM=${checkFLOWCELL_PATH}/"$i"/uBAM/clean_bam.log 
+    printf "#######--PROGRESS "$i"--#################################################################################################\n"   
+    echo "FASTQ to uBAM:"
+    if [ -e ${checkUNMAPPED_BAM} ]; then
+        echo "File "$i" ${checkUNMAPPED_BAM} exists."
+        tail -2 ${checkUNMAPPED_BAM}
+    else
+        echo "File "$i" ${checkUNMAPPED_BAM} does not exist."
+    fi
+    printf "\n\n"
+    echo "MarkAdapters:"    
+    if [ -e ${checkMARKADPT_BAM} ]; then
+        echo "File "$i" $checkMARKADPT_BAM} exists."
+        tail -2 ${checkMARKADPT_BAM}
+    else
+        echo "File "$i" ${checkMARKADPT_BAM} does not exist."
+    fi
+    printf "\n\n"
+    echo "CLEAN_BAM:"
+    if [ -e ${checkCLEAN_BAM} ]; then
+        echo "File "$i" ${checkCLEAN_BAM} exists."
+        tail -3 ${checkCLEAN_BAM}
+    else
+        echo "File "$i" ${checkCLEAN_BAM} does not exist."
+    fi
+    printf "#######--PROGRESS "$i"--#################################################################################################"   
+    printf "\n\n\n"
+done)>"progress.log" 2>&1
+
