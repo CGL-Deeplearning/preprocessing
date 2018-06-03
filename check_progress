@@ -33,13 +33,13 @@ for i in Sample*; do
 
 done
 printf "#######--PROGRESS ${checkFLOWCELL} ALL_SAMPLE BAM--#################################################################################################\n"
-export CHECK_ALL_SAMPLES=${checkFLOWCELL_PATH}/all_samples/
+export CHECK_ALL_SAMPLES="${checkFLOWCELL_PATH}/all_samples"
 export checkFLOWCELL=$(echo $(pwd) | cut -d "/" -f5);echo $checkFLOWCELL
 
 if [ -d ${CHECK_ALL_SAMPLES} ]; then
     cd $CHECK_ALL_SAMPLES
-    export checkALL_SAMPLE_BAM=${CHECK_ALL_SAMPLES}/markdup.log
-    export checkALL_SAMPLE_COVERAGE=${CHECK_ALL_SAMPLES}/coverage.log
+    export checkALL_SAMPLE_BAM="${CHECK_ALL_SAMPLES}/markdup.log"
+    export checkALL_SAMPLE_COVERAGE="${CHECK_ALL_SAMPLES}/coverage.log"
 
     echo "${checkFLOWCELL} ALL_SAMPLE BAM:"
     if [ -e ${checkALL_SAMPLE_BAM} ]; then
@@ -65,10 +65,10 @@ printf "#######--PROGRESS ${checkFLOWCELL} DeepVariant Ch19 Run--###############
 checkDeepVariant="${checkFLOWCELL_PATH}/all_samples/dv_testing/19/output/logs"
 if [ -d ${checkDeepVariant} ]; then
     cd ${checkDeepVariant}
-    export checkDV_make_examples=${checkDeepVariant}/make_examples_chr19.log
-    export checkDV_call_variants=${checkDeepVariant}/call_variants_chr19.log
-    export checkDV_postprocess_variants=${checkDeepVariant}/postprocess_variants_chr19.log
-    export checkDV_happy=${checkDeepVariant}/happyresults_chr19.log
+    export checkDV_make_examples="${checkDeepVariant}/make_examples_chr19.log"
+    export checkDV_call_variants="${checkDeepVariant}/call_variants_chr19.log"
+    export checkDV_postprocess_variants="${checkDeepVariant}/postprocess_variants_chr19.log"
+    export checkDV_happy="${checkDeepVariant}/happyresults_chr19.log"
 
     echo "${checkFLOWCELL} DV_ch19 MAKE EXAMPLES: "
     if [ -e ${checkDV_make_examples} ]; then
