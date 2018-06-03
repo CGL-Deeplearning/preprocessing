@@ -144,7 +144,7 @@ FASTQ_TO_UBAM() {
     export READGROUP=$(echo $(pwd) | rev | cut -d'/' -f 2 | rev);echo $READGROUP
     export FLOWCELL=$(echo $(pwd) | cut -d "/" -f5);echo $FLOWCELL
     echo "Step3: Processing FASTQ_TO_UBAM ${READGROUP}"
-    (java -verbose:gc -XX:+UseParallelOldGC -XX:+AggressiveOpts -XX:ParallelGCThreads=30 -XX:ConcGCThreads=8 -Xmn25g  -Xms30g -jar ${PICARD} FastqToSam \
+    (java -verbose:gc -XX:+UseParallelOldGC -XX:+AggressiveOpts -XX:ParallelGCThreads=30 -XX:ConcGCThreads=2 -Xmn25g  -Xms30g -jar ${PICARD} FastqToSam \
     F1=${READGROUP}_R1.fastq \
     F2=${READGROUP}_R2.fastq \
     OUTPUT=${READGROUP}_unmapped.bam \
@@ -179,7 +179,7 @@ wait
 MARK_ADAPTORS() {
     READGROUP=$(echo $(pwd) | rev | cut -d'/' -f 2 | rev);echo $READGROUP
     echo "Step4: Processing MARK_ADAPTORS ${READGROUP}"
-    (java -verbose:gc -XX:+UseParallelOldGC -XX:+AggressiveOpts -XX:ParallelGCThreads=30 -XX:ConcGCThreads=8 -Xmn25g  -Xms30g -jar ${PICARD} MarkIlluminaAdapters \
+    (java -verbose:gc -XX:+UseParallelOldGC -XX:+AggressiveOpts -XX:ParallelGCThreads=30 -XX:ConcGCThreads=2 -Xmn25g  -Xms30g -jar ${PICARD} MarkIlluminaAdapters \
     I=${READGROUP}_unmapped.bam \
     O=${READGROUP}_markadpt.bam \
     M=${READGROUP}_markadpt_metrics.txt \
