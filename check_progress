@@ -44,7 +44,7 @@ if [ -d ${CHECK_ALL_SAMPLES} ]; then
     echo "${checkFLOWCELL} ALL_SAMPLE BAM:"
     if [ -e ${checkALL_SAMPLE_BAM} ]; then
         echo "File  ${checkFLOWCELL} ALL_SAMPLE BAM ${checkALL_SAMPLE_BAM} exists."
-        tail -3 ${checkUNMAPPED_BAM}
+        tail -3 ${checkALL_SAMPLE_BAM}
     else
         echo "File  ${checkFLOWCELL} ALL_SAMPLE BAM ${checkALL_SAMPLE_BAM} does not exist."
     fi
@@ -52,7 +52,7 @@ if [ -d ${CHECK_ALL_SAMPLES} ]; then
     echo "${checkFLOWCELL} Check Coverage:"
     if [ -e ${checkALL_SAMPLE_COVERAGE} ]; then
         echo "File  ${checkFLOWCELL} ${checkALL_SAMPLE_COVERAGE} exists."
-        tail -4 ${checkUNMAPPED_BAM}
+        tail -4 ${checkALL_SAMPLE_COVERAGE}
     else
         echo "File ${checkFLOWCELL} ${checkALL_SAMPLE_COVERAGE} does not exist."
     fi
