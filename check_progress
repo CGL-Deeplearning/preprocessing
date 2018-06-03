@@ -48,6 +48,7 @@ if [ -d ${CHECK_ALL_SAMPLES} ]; then
     else
         echo "File  ${checkFLOWCELL} ALL_SAMPLE BAM ${checkALL_SAMPLE_BAM} does not exist."
     fi
+    printf "\n\n"
     echo "${checkFLOWCELL} Check Coverage:"
     if [ -e ${checkALL_SAMPLE_COVERAGE} ]; then
         echo "File  ${checkFLOWCELL} ${checkALL_SAMPLE_COVERAGE} exists."
@@ -77,6 +78,7 @@ if [ -d ${checkDeepVariant} ]; then
     else
         echo "File ${checkFLOWCELL} ${checkDV_make_examples} does not exist."
     fi
+    printf "\n\n"
     echo "${checkFLOWCELL} DV_ch19 CALL VARIANTS:"
     if [ -e ${checkDV_call_variants} ]; then
         echo "File  ${checkFLOWCELL} ${checkDV_call_variants} exists."
@@ -84,6 +86,7 @@ if [ -d ${checkDeepVariant} ]; then
     else
         echo "File ${checkFLOWCELL} ${checkDV_call_variants} does not exist."
     fi
+    printf "\n\n"
     echo "${checkFLOWCELL} DV_ch19 POST-PROCESS VARIANTS: "
     if [ -e ${checkDV_postprocess_variants} ]; then
         echo "File  ${checkFLOWCELL} ALL_SAMPLE BAM ${checkDV_postprocess_variants} exists."
@@ -91,6 +94,7 @@ if [ -d ${checkDeepVariant} ]; then
     else
         echo "File  ${checkFLOWCELL} ALL_SAMPLE BAM ${checkALL_SAMPLE_BAM} does not exist."
     fi
+    printf "\n\n"
     echo "${checkFLOWCELL} Check HAP.PY:"
     if [ -e ${checkDV_happy} ]; then
         echo "File  ${checkFLOWCELL} ${checkDV_happy} exists."
