@@ -1,0 +1,94 @@
+set -euo pipefail
+
+#Get the name of flowcell to be ran on deepvariant
+export FLOWCELL=$(echo $(pwd) | cut -d "/" -f5);echo $FLOWCELL
+export FLOWCELL_PATH=$(pwd);echo $FLOWCELL_PATH
+cd ${FLOWCELL_PATH}/all_samples
+mkdir -p {FLOWCELL_PATH}/all_samples/dv_testing; cd {FLOWCELL_PATH}/all_samples/dv_testing/
+mkdir -p {FLOWCELL_PATH}/all_samples/dv_testing/chr19/; cd {FLOWCELL_PATH}/all_samples/dv_testing/chr19/
+export ALL_SAMPLE_DIR="{FLOWCELL_PATH}/all_samples"
+export BASE="${FLOWCELL_PATH}/all_samples/dv_testing/19"
+
+#Preliminaries for downloading DV (check to make sure latest model is used):
+BIN_VERSION="0.5.1"
+MODEL_VERSION="0.5.0"
+
+#Define variables for data handling:
+export INPUT_DIR="${FLOWCELL_PATH}/all_samples"
+export BIN_DIR="${HOME}/case-study/input/bin"
+export MODELS_DIR="${HOME}/case-study/input/models"
+export MODEL="${MODELS_DIR}/model.ckpt"
+export REF="${HOME}/ref/GRCh38_full_analysis_set_plus_decoy_hla.fa"
+export BAM="${INPUT_DIR}/${FLOWCELL}_allSamples_markdup.bam"
+export TRUTH_VCF="${HOME}/dv_input/HG001_GRCh38_GIAB_highconf_CG-IllFB-IllGATKHC-Ion-10X-SOLID_CHROM1-X_v.3.3.2_highconf_PGandRTGphasetransfer.vcf.gz"
+export TRUTH_BED="${HOME}/dv_input/HG001_GRCh38_GIAB_highconf_CG-IllFB-IllGATKHC-Ion-10X-SOLID_CHROM1-X_v.3.3.2_highconf_nosomaticdel_noCENorHET7.bed"
+#note: make sure VCF and BED files are zipped and indexed
+
+#set number of shards if using paralell
+export N_SHARDS="64"
+
+export OUTPUT_DIR="${BASE}/output"
+export EXAMPLES="${OUTPUT_DIR}/chr19_${FLOWCELL}_GIAB_GRCh38_NA12878.tfrecord@${N_SHARDS}.gz"
+export CALL_VARIANTS_OUTPUT="${OUTPUT_DIR}/chr19_${FLOWCELL}_GIAB_GRCh38_NA12878.cvo.tfrecord.gz"
+export OUTPUT_VCF="${OUTPUT_DIR}/chr19_${FLOWCELL}_GIAB_GRCh38_NA12878.output.vcf.gz"
+export LOG_DIR="${OUTPUT_DIR}/logs"
+
+#Create a local directory structure:
+mkdir -p "${OUTPUT_DIR}"
+mkdir -p "${LOG_DIR}"
+
+
+#Make Examples:
+#check indexing convention on VCF and BED files (ex: chr19 vs 19)
+#to run only a region/chromosome use flag '--regions chr#' and check indexing convention
+#for whole genome run remove '--regions chr#' flag
+
+( time seq 0 $((N_SHARDS-1)) | \
+  parallel --halt 2 --joblog "${LOG_DIR}/log" --res "${LOG_DIR}" \
+    python "${BIN_DIR}"/make_examples.zip \
+      --mode calling \
+      --ref "${REF}" \
+      --reads "${BAM}" \
+      --regions chr19 \
+      --examples "${EXAMPLES}" \
+      --task {}
+) >"${LOG_DIR}/make_examples_chr19.log" 2>&1
+wait
+
+#Note: you can change GCP machine allocation before after running make-examples, 32CPU should be enough
+#Call Variants:
+
+( time python "${BIN_DIR}"/call_variants.zip \
+    --outfile "${CALL_VARIANTS_OUTPUT}" \
+    --examples "${EXAMPLES}" \
+    --checkpoint "${MODEL}" \
+    --batch_size 256
+) >"${LOG_DIR}/call_variants_chr19.log" 2>&1
+wait
+
+#Post-Process Variants (VCF only):
+
+( time python "${BIN_DIR}"/postprocess_variants.zip \
+    --ref "${REF}" \
+    --infile "${CALL_VARIANTS_OUTPUT}" \
+    --outfile "${OUTPUT_VCF}"
+) >"${LOG_DIR}/postprocess_variants_chr19.log" 2>&1
+wait
+
+
+#Happy Compare:
+#Note: to use hap.py for nanopore bed file needs to be zipped (bgzip) and indexed (tabix)
+#to run hap.py on docker image (use if you have no local hap.py software)
+
+HAPPY="${HOME}/software/happy-build/bin/hap.py"
+
+(python "${HAPPY}" \
+"${TRUTH_VCF}" \
+"${OUTPUT_VCF}" \
+--preprocess-truth \
+-f "${TRUTH_BED}" \
+-o "${OUTPUT_DIR}/happy.output.chr19" \
+-r "${REF}"
+-l chr19 \
+) >"happyresults_chr19.log" 2>&1
+
