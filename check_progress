@@ -3,21 +3,21 @@ export checkFLOWCELL=$(echo $(pwd) | cut -d "/" -f5);echo $checkFLOWCELL
 for i in Sample*; do
     #echo "$i"
     export checkUNMAPPED_BAM=${checkFLOWCELL_PATH}/"$i"/uBAM/fastq_to_ubam.log
-    export checkMARKADPT_BAM=${checkFLOWCELL_PATH}/"$i"/uBAM/markadapters.log 
-    export checkCLEAN_BAM=${checkFLOWCELL_PATH}/"$i"/uBAM/clean_bam.log 
-    printf "#######--PROGRESS "$i"--#################################################################################################\n"   
+    export checkMARKADPT_BAM=${checkFLOWCELL_PATH}/"$i"/uBAM/markadapters.log
+    export checkCLEAN_BAM=${checkFLOWCELL_PATH}/"$i"/uBAM/clean_bam.log
+    printf "#######--PROGRESS "$i"--#################################################################################################\n"
     echo "FASTQ to uBAM:"
     if [ -e ${checkUNMAPPED_BAM} ]; then
         echo "File "$i" ${checkUNMAPPED_BAM} exists."
-        tail -2 ${checkUNMAPPED_BAM}
+        tail -3 ${checkUNMAPPED_BAM}
     else
         echo "File "$i" ${checkUNMAPPED_BAM} does not exist."
     fi
     printf "\n\n"
-    echo "MarkAdapters:"    
+    echo "MarkAdapters:"
     if [ -e ${checkMARKADPT_BAM} ]; then
         echo "File "$i" $checkMARKADPT_BAM} exists."
-        tail -2 ${checkMARKADPT_BAM}
+        tail -3 ${checkMARKADPT_BAM}
     else
         echo "File "$i" ${checkMARKADPT_BAM} does not exist."
     fi
@@ -29,7 +29,78 @@ for i in Sample*; do
     else
         echo "File "$i" ${checkCLEAN_BAM} does not exist."
     fi
-    printf "#######--PROGRESS "$i"--#################################################################################################"   
-    printf "\n\n\n"
-done)>"progress.log" 2>&1
+    printf "#######--PROGRESS "$i"--#################################################################################################\n\n"
 
+done
+printf "#######--PROGRESS ${checkFLOWCELL} ALL_SAMPLE BAM--#################################################################################################\n"
+export CHECK_ALL_SAMPLES=${checkFLOWCELL_PATH}/all_samples/
+export checkFLOWCELL=$(echo $(pwd) | cut -d "/" -f5);echo $checkFLOWCELL
+
+if [ -d ${CHECK_ALL_SAMPLES} ]; then
+    cd $CHECK_ALL_SAMPLES
+    export checkALL_SAMPLE_BAM=${CHECK_ALL_SAMPLES}/markdup.log
+    export checkALL_SAMPLE_COVERAGE=${CHECK_ALL_SAMPLES}/coverage.log
+
+    echo "${checkFLOWCELL} ALL_SAMPLE BAM:"
+    if [ -e ${checkALL_SAMPLE_BAM} ]; then
+        echo "File  ${checkFLOWCELL} ALL_SAMPLE BAM ${checkALL_SAMPLE_BAM} exists."
+        tail -3 ${checkUNMAPPED_BAM}
+    else
+        echo "File  ${checkFLOWCELL} ALL_SAMPLE BAM ${checkALL_SAMPLE_BAM} does not exist."
+    fi
+    echo "${checkFLOWCELL} Check Coverage:"
+    if [ -e ${checkALL_SAMPLE_BAM} ]; then
+        echo "File  ${checkFLOWCELL} ${checkALL_SAMPLE_COVERAGE} exists."
+        tail -4 ${checkUNMAPPED_BAM}
+    else
+        echo "File ${checkFLOWCELL} ${checkALL_SAMPLE_COVERAGE} does not exist."
+    fi
+
+else
+    echo ${checkFLOWCELL} ${CHECK_ALL_SAMPLES} directory does not exist
+fi
+printf "#######--PROGRESS ${checkFLOWCELL} ALL_SAMPLE BAM--#################################################################################################\n"
+
+printf "#######--PROGRESS ${checkFLOWCELL} DeepVariant Ch19 Run--#################################################################################################\n"
+checkDeepVariant="${checkFLOWCELL_PATH}/all_samples/dv_testing/19/output/logs"
+if [ -d ${checkDeepVariant} ]; then
+    cd ${checkDeepVariant}
+    export checkDV_make_examples=${checkDeepVariant}/make_examples_chr19.log
+    export checkDV_call_variants=${checkDeepVariant}/call_variants_chr19.log
+    export checkDV_postprocess_variants=${checkDeepVariant}/postprocess_variants_chr19.log
+    export checkDV_happy=${checkDeepVariant}/happyresults_chr19.log
+
+    echo "${checkFLOWCELL} DV_ch19 MAKE EXAMPLES: "
+    if [ -e ${checkDV_make_examples} ]; then
+        echo "File  ${checkFLOWCELL} ${checkDV_make_examples} exists."
+        tail -5 ${checkDV_make_examples}
+    else
+        echo "File ${checkFLOWCELL} ${checkDV_make_examples} does not exist."
+    fi
+    echo "${checkFLOWCELL} DV_ch19 CALL VARIANTS:"
+    if [ -e ${checkDV_call_variants} ]; then
+        echo "File  ${checkFLOWCELL} ${checkDV_call_variants} exists."
+        tail -5 ${checkDV_call_variants}
+    else
+        echo "File ${checkFLOWCELL} ${checkDV_call_variants} does not exist."
+    fi
+    echo "${checkFLOWCELL} DV_ch19 POST-PROCESS VARIANTS: "
+    if [ -e ${checkDV_postprocess_variants} ]; then
+        echo "File  ${checkFLOWCELL} ALL_SAMPLE BAM ${checkDV_postprocess_variants} exists."
+        tail -3 ${checkDV_postprocess_variants}
+    else
+        echo "File  ${checkFLOWCELL} ALL_SAMPLE BAM ${checkALL_SAMPLE_BAM} does not exist."
+    fi
+    echo "${checkFLOWCELL} Check HAP.PY:"
+    if [ -e ${checkDV_happy} ]; then
+        echo "File  ${checkFLOWCELL} ${checkDV_happy} exists."
+        tail -15 ${checkDV_happy}
+    else
+        echo "File ${checkFLOWCELL} ${checkDV_happy} does not exist."
+    fi
+
+else
+    echo ${checkFLOWCELL} ${checkDeepVariant} directory does not exist
+fi
+printf "#######--PROGRESS ${checkFLOWCELL} DeepVariant Ch19 Run--#################################################################################################\n"
+)>"progress.log" 2>&1
