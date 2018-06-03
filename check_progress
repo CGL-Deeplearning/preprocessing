@@ -32,7 +32,7 @@ for i in Sample*; do
     printf "#######--PROGRESS "$i"--#################################################################################################\n\n"
 
 done
-printf "#######--PROGRESS ${checkFLOWCELL} ALL_SAMPLE BAM--#################################################################################################\n"
+printf "#######--PROGRESS fl7_AHGV6ADXX ALL_SAMPLE BAM--###############################################################################\n"
 export CHECK_ALL_SAMPLES="${checkFLOWCELL_PATH}/all_samples"
 export checkFLOWCELL=$(echo $(pwd) | cut -d "/" -f5);echo $checkFLOWCELL
 
@@ -59,9 +59,9 @@ if [ -d ${CHECK_ALL_SAMPLES} ]; then
 else
     echo ${checkFLOWCELL} ${CHECK_ALL_SAMPLES} directory does not exist
 fi
-printf "#######--PROGRESS ${checkFLOWCELL} ALL_SAMPLE BAM--#################################################################################################\n"
+printf "#######--PROGRESS fl7_AHGV6ADXX ALL_SAMPLE BAM--###############################################################################\n\n"
 
-printf "#######--PROGRESS ${checkFLOWCELL} DeepVariant Ch19 Run--#################################################################################################\n"
+printf "#######--PROGRESS fl7_AHGV6ADXX DeepVariant Ch19 Run--#########################################################################\n"
 checkDeepVariant="${checkFLOWCELL_PATH}/all_samples/dv_testing/19/output/logs"
 if [ -d ${checkDeepVariant} ]; then
     cd ${checkDeepVariant}
@@ -102,5 +102,5 @@ if [ -d ${checkDeepVariant} ]; then
 else
     echo ${checkFLOWCELL} ${checkDeepVariant} directory does not exist
 fi
-printf "#######--PROGRESS ${checkFLOWCELL} DeepVariant Ch19 Run--#################################################################################################\n"
+printf "#######--PROGRESS fl7_AHGV6ADXX DeepVariant Ch19 Run--#########################################################################\n\n"
 )>"progress.log" 2>&1
