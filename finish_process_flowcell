@@ -7,7 +7,7 @@ export FLOWCELL_PATH=$(pwd);echo $FLOWCELL_PATH
 mkdir -p all_samples
 for i in Sample*;do mv "$i"/uBAM/"$i"_clean.bam ${FLOWCELL_PATH}/all_samples/ ;done ;wait
 cd ${FLOWCELL_PATH}/all_samples/
-ALL_SAMPLEPATH=$(pwd)
+export ALL_SAMPLEPATH=$(pwd)
 
 #create a dynamic array to specify all bams as input for Markdups
 for i in *_clean.bam;do echo "INPUT="${ALL_SAMPLEPATH}/"$i" >> all_samples.txt ;done ;wait
@@ -22,7 +22,7 @@ echo "Step6: Processing MarkDuplicates ALL SAMPLES!"
 export FLOWCELL=$(echo $(pwd) | cut -d "/" -f5);echo $FLOWCELL
 (java -verbose:gc -XX:+UseParallelOldGC -XX:+AggressiveOpts -XX:ParallelGCThreads=56 -Xmn30g  -Xms60g -jar ${PICARD} MarkDuplicates \
 $(echo ${bam_array[@]}) \
-OUTPUT=${ALL_SAMPLEPATH}/{FLOWCELL}_allSamples_markdup.bam \
+OUTPUT=${ALL_SAMPLEPATH}/${FLOWCELL}_allSamples_markdup.bam \
 METRICS_FILE=${ALL_SAMPLEPATH}/dupmetrics_${FLOWCELL}_allSamples.txt \
 CREATE_INDEX=true \
 REMOVE_DUPLICATES=true \

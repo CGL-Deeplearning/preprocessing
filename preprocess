@@ -32,8 +32,6 @@ set -euo pipefail
 
 
 
-
-
 #Step2: MAKE_R1R2_FASTQ() - For given sample of a flowcell, creates uBAM directories. Unzips fastq.gz files 
 #from GIAB ftp server. Concatenates unzipped fastq's into 2 final fastq files (read1 and read2).
 #Currently we pre-process by treating each Sample_UXx as a readgroup, not each lane of Sample_UXx as a read group.
@@ -44,33 +42,89 @@ set -euo pipefail
 
 #For our pre-processing of GIAB fastqs: Flowcell = Library, Sample = NA12878, Lane = ReadGroup = Sample_UXx = Read1 & Read2
 export FLOWCELL=$(echo $(pwd) | cut -d "/" -f5);echo $FLOWCELL
+export READGROUP=$(echo $(pwd) | rev | cut -d'/' -f 1 | rev);echo $READGROUP
+
+CHECK_FASTQ() {
+    if [ ! -f *.fastq.gz ]; then
+        echo "zipped fastq files not found, check elsewhere"
+        export BOOL_FASTQ=0
+    else
+        echo "fastq files found! Continue pre-processing..."
+        export BOOL_FASTQ=1
+    fi
+        }
 
 MAKE_R1R2_FASTQ() {
-    READGROUP=$(echo $(pwd) | cut -d "/" -f6);echo $READGROUP
+    export READGROUP=$(echo $(pwd) | rev | cut -d'/' -f 1 | rev);echo ${READGROUP}
     export SAMPLE_PATH=$(pwd)
     echo "Step2: Processing MAKE_R1R2_FASTQ ${READGROUP}"
     mkdir -p uBAM uBAM/read1 uBAM/read2
-    {
-    if [ ! -f *.fastq.gz ]; then
-        echo "File not found!"
+    CHECK_FASTQ; wait
+    if [ ${BOOL_FASTQ} -eq 1 ]; then
+        echo "Moving fastq files to uBAM/read1 and uBAM/read2 for unzipping"
+        for i in *R1*.fastq.gz;do mv "$i" ${SAMPLE_PATH}/uBAM/read1/ ;done;wait
+        for i in *R2*.fastq.gz;do mv "$i" ${SAMPLE_PATH}/uBAM/read2/ ;done;wait
     else
-    echo "File found!"
-    for i in *R1*.fastq.gz;do mv "$i" ${FLOWCELL_PATH}/${READGROUP}/uBAM/read1/ ;done;wait
-    for i in *R2*.fastq.gz;do mv "$i" ${FLOWCELL_PATH}/${READGROUP}/uBAM/read2/ ;done;wait
+        echo "fastq files not found in ${READGROUP} home directory, checking ${READGROUP}/uBAM directories!"
     fi
-    }
-    #Process read1:
+
+    ####Process read1:
+
     cd ${SAMPLE_PATH}/uBAM/read1/
-    for i in *.fastq.gz;do gunzip "$i" & done; wait
-    ls -1 *.fastq | sort | while read fn ; do cat "$fn" >> ${READGROUP}_R1.fastq;done; wait
-    rm U*
-    mv * ../
+    CHECK_FASTQ; wait
+    if [ ${BOOL_FASTQ} -eq 1 ]; then
+        echo "unzipping fastqs for read1"
+        for i in *.fastq.gz;do gunzip "$i" & done; wait
+        ls -1 *.fastq | sort | while read fn ; do cat "$fn" >> ${READGROUP}_R1.fastq;done; wait
+    else
+        echo "no zipped fastqs found"
+    fi
+
+    wait
+    ### check if read1fastq in read1 directory, then check size and move to uBAM directory
+    if [ -e ${READGROUP}_R1.fastq ]; then
+        export file_r1_size=$(wc -c <${READGROUP}_R1.fastq)
+        mv ${READGROUP}_R1.fastq ../
+        cd ..
+    else
+        cd ..;
+        if [ -e ${READGROUP}_R1.fastq ];then export file_r1_size=$(wc -c <${READGROUP}_R1.fastq); fi
+    fi
+
+    if [ ${file_r1_size} -ge 300000000 ]; then #check if filesize at least 300M
+        echo "read1 file is at least 300M"
+    else
+        echo "read1 file smaller than 300M or doesn't exist. Check for possible error"
+    fi
+
     cd ${SAMPLE_PATH}/uBAM/read2/
-    for i in *.fastq.gz;do gunzip "$i" & done;wait
-    ls -1 *.fastq | sort | while read fn ; do cat "$fn" >> ${READGROUP}_R2.fastq;done; wait
-    rm U*
-    mv * ../
-    cd ..
+
+    CHECK_FASTQ; wait
+    if [ ${BOOL_FASTQ} -eq 1 ]; then
+        echo "unzipping fastqs for read2"
+        for i in *.fastq.gz;do gunzip "$i" & done; wait
+        ls -1 *.fastq | sort | while read fn ; do cat "$fn" >> ${READGROUP}_R2.fastq;done; wait
+    else
+        echo "no zipped fastqs found"
+    fi
+
+    if [ -e ${READGROUP}_R2.fastq ]; then
+        export file_r2_size=$(wc -c <${READGROUP}_R2.fastq)
+        mv ${READGROUP}_R2.fastq ../
+        cd ..
+    else
+        cd ..;
+        if [ -e ${READGROUP}_R2.fastq ];then export file_r2_size=$(wc -c <${READGROUP}_R2.fastq); fi
+    fi
+
+    wait
+
+    if [ ${file_r2_size} -ge 300000000 ]; then #check if filesize at least 300M
+        echo "read2 file is at least 300M enough"
+    else
+        echo "read2 file smaller than 300M, possible error"
+    fi
+    wait
     Read1_FASTQ=${READGROUP}_R1.fastq
     Read2_FASTQ=${READGROUP}_R2.fastq
     echo $Read1_FASTQ
@@ -85,10 +139,12 @@ wait
 #Step3: Turn the read1 and read2 fastq files for Sample_UXx into a single unmapped bamfile. This is where
 #correctly distinguishing ReadGroup, sample, library, and platform becomes very important for downstream processes. 
 #Once again, for our pre-processing of GIAB fastqs: Flowcell = Library, Sample = NA12878, Lane = ReadGroup = Sample_UXx = Read1 & Read2
+
 FASTQ_TO_UBAM() {
-    READGROUP=$(echo $(pwd) | cut -d "/" -f6);echo $READGROUP
+    export READGROUP=$(echo $(pwd) | rev | cut -d'/' -f 2 | rev);echo $READGROUP
+    export FLOWCELL=$(echo $(pwd) | cut -d "/" -f5);echo $FLOWCELL
     echo "Step3: Processing FASTQ_TO_UBAM ${READGROUP}"
-    (java -verbose:gc -XX:+UseParallelOldGC -XX:+AggressiveOpts -XX:ParallelGCThreads=56 -XX:ConcGCThreads=8 -Xmn25g  -Xms30g -jar ${PICARD} FastqToSam \
+    (java -verbose:gc -XX:+UseParallelOldGC -XX:+AggressiveOpts -XX:ParallelGCThreads=30 -XX:ConcGCThreads=8 -Xmn25g  -Xms30g -jar ${PICARD} FastqToSam \
     F1=${READGROUP}_R1.fastq \
     F2=${READGROUP}_R2.fastq \
     OUTPUT=${READGROUP}_unmapped.bam \
@@ -104,6 +160,7 @@ FASTQ_TO_UBAM() {
     export FASTQ_TO_UBAM_output="${READGROUP}_unmapped.bam"
     echo $FASTQ_TO_UBAM_output
     }
+
 FASTQ_TO_UBAM
 wait
 
@@ -120,9 +177,9 @@ wait
 #Adjust the default standard Illumina adapter sequences to any adapter sequence using the FIVE_PRIME_ADAPTER and THREE_PRIME_ADAPTER parameters. To clear and add new adapter sequences first set ADAPTERS to 'null' then specify each sequence with the parameter.
 
 MARK_ADAPTORS() {
-    READGROUP=$(echo $(pwd) | cut -d "/" -f6);echo $READGROUP
+    READGROUP=$(echo $(pwd) | rev | cut -d'/' -f 2 | rev);echo $READGROUP
     echo "Step4: Processing MARK_ADAPTORS ${READGROUP}"
-    (java -verbose:gc -XX:+UseParallelOldGC -XX:+AggressiveOpts -XX:ParallelGCThreads=56 -XX:ConcGCThreads=8 -Xmn25g  -Xms30g -jar ${PICARD} MarkIlluminaAdapters \
+    (java -verbose:gc -XX:+UseParallelOldGC -XX:+AggressiveOpts -XX:ParallelGCThreads=30 -XX:ConcGCThreads=8 -Xmn25g  -Xms30g -jar ${PICARD} MarkIlluminaAdapters \
     I=${READGROUP}_unmapped.bam \
     O=${READGROUP}_markadpt.bam \
     M=${READGROUP}_markadpt_metrics.txt \
@@ -131,6 +188,7 @@ MARK_ADAPTORS() {
     USE_JDK_INFLATER=true \
     TMP_DIR=/tmp)>"markadapters.log" 2>&1
     }
+
 MARK_ADAPTORS
 wait
 
@@ -140,9 +198,9 @@ wait
 #3.Merge BAM alignment
 
 BWA_MEM_MAKE_CLEAN_BAM() {
-    READGROUP=$(echo $(pwd) | cut -d "/" -f6)
+    READGROUP=$(echo $(pwd) | rev | cut -d'/' -f 2 | rev);echo $READGROUP
     echo "Step5: Processing BWA_MEM_MAKE_CLEAN_BAM ${READGROUP}"
-    (java  -XX:+UseParallelOldGC -XX:+AggressiveOpts -XX:ParallelGCThreads=8 -Xmn15g  -Xms40g -jar ${PICARD} SamToFastq \
+    (java  -XX:+UseParallelOldGC -XX:+AggressiveOpts -XX:ParallelGCThreads=4 -Xmn15g  -Xms40g -jar ${PICARD} SamToFastq \
     I=${READGROUP}_markadpt.bam \
     FASTQ=/dev/stdout \
     CLIPPING_ATTRIBUTE=XT \
@@ -152,7 +210,7 @@ BWA_MEM_MAKE_CLEAN_BAM() {
     MAX_RECORDS_IN_RAM=10000000 \
     USE_JDK_DEFLATER=true \
     USE_JDK_INFLATER=true \
-    TMP_DIR=/tmp|bwa mem -M -t 48 -p /home/louisecabansay/ref/GRCh38_full_analysis_set_plus_decoy_hla.fa /dev/stdin |java -XX:+UseParallelOldGC -XX:+AggressiveOpts -XX:ParallelGCThreads=8 -Xmn20g  -Xms30g -jar ${PICARD} MergeBamAlignment \
+    TMP_DIR=/tmp|bwa mem -M -t 24 -p /home/louisecabansay/ref/GRCh38_full_analysis_set_plus_decoy_hla.fa /dev/stdin |java -XX:+UseParallelOldGC -XX:+AggressiveOpts -XX:ParallelGCThreads=4 -Xmn20g  -Xms30g -jar ${PICARD} MergeBamAlignment \
     ALIGNED_BAM=/dev/stdin \
     UNMAPPED_BAM=${READGROUP}_unmapped.bam \
     OUTPUT=${READGROUP}_clean.bam \
@@ -172,7 +230,8 @@ BWA_MEM_MAKE_CLEAN_BAM() {
 
 BWA_MEM_MAKE_CLEAN_BAM
 wait
-READGROUP=$(echo $(pwd) | cut -d "/" -f6);echo $READGROUP
+READGROUP=$(echo $(pwd) | rev | cut -d'/' -f 2 | rev);echo $READGROUP
+export FLOWCELL=$(echo $(pwd) | cut -d "/" -f5);echo $FLOWCELL
 ls -lah
 echo "Done with ${READGROUP} for Flowcell ${FLOWCELL}"
   
