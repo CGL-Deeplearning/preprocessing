@@ -73,6 +73,7 @@ wait
     --infile "${CALL_VARIANTS_OUTPUT}" \
     --outfile "${OUTPUT_VCF}"
 ) >"${LOG_DIR}/postprocess_variants_chr19.log" 2>&1
+
 wait
 
 
@@ -92,3 +93,4 @@ HAPPY="${HOME}/software/happy-build/bin/hap.py"
 -l chr19 \
 ) >${LOG_DIR}/happyresults_chr19.log" 2>&1
 
+wait
