@@ -90,5 +90,5 @@ HAPPY="${HOME}/software/happy-build/bin/hap.py"
 -o "${OUTPUT_DIR}/happy.output.chr19" \
 -r "${REF}"
 -l chr19 \
-) >"happyresults_chr19.log" 2>&1
+) >${LOG_DIR}/happyresults_chr19.log" 2>&1
 
