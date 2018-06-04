@@ -4,8 +4,8 @@ set -euo pipefail
 export FLOWCELL=$(echo $(pwd) | cut -d "/" -f5);echo $FLOWCELL
 export FLOWCELL_PATH=$(pwd);echo $FLOWCELL_PATH
 cd ${FLOWCELL_PATH}/all_samples
-mkdir -p {FLOWCELL_PATH}/all_samples/dv_testing; cd {FLOWCELL_PATH}/all_samples/dv_testing/
-mkdir -p {FLOWCELL_PATH}/all_samples/dv_testing/chr19/; cd {FLOWCELL_PATH}/all_samples/dv_testing/chr19/
+mkdir -p ${FLOWCELL_PATH}/all_samples/dv_testing; cd ${FLOWCELL_PATH}/all_samples/dv_testing/
+mkdir -p ${FLOWCELL_PATH}/all_samples/dv_testing/chr19/; cd ${FLOWCELL_PATH}/all_samples/dv_testing/chr19/
 export ALL_SAMPLE_DIR="{FLOWCELL_PATH}/all_samples"
 export BASE="${FLOWCELL_PATH}/all_samples/dv_testing/19"
 
