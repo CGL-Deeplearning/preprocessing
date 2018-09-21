@@ -54,6 +54,9 @@ CHECK_FASTQ() {
     fi
         }
 
+#MAKE_R1R2_FASTQ cats the fastq files for R1 and R2 fastqs respectively, output is 2 fastq files one for R1 and one for R2.
+#First respective read fastqs are moved into R1 and R2 directories, and then in each directory each fastq file is first unzipped. Once unzipped,
+the multiple fastqs for the respective read (R1 or R2) is cat together into a single fastq.
 MAKE_R1R2_FASTQ() {
     export READGROUP=$(echo $(pwd) | rev | cut -d'/' -f 1 | rev);echo ${READGROUP}
     export SAMPLE_PATH=$(pwd)
@@ -142,7 +145,7 @@ wait
 
 FASTQ_TO_UBAM() {
     export READGROUP=$(echo $(pwd) | rev | cut -d'/' -f 2 | rev);echo $READGROUP
-    export FLOWCELL=$(echo $(pwd) | cut -d "/" -f5);echo $FLOWCELL
+    export FLOWCELL=$(echo $(pwd) | cut -d "/" -f3);echo $FLOWCELL
     echo "Step3: Processing FASTQ_TO_UBAM ${READGROUP}"
     (java -verbose:gc -XX:+UseParallelOldGC -XX:+AggressiveOpts -XX:ParallelGCThreads=30 -XX:ConcGCThreads=2 -Xmn25g  -Xms30g -jar ${PICARD} FastqToSam \
     F1=${READGROUP}_R1.fastq \

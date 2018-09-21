@@ -1,5 +1,5 @@
 (export FLOWCELL_PATH=$(pwd);echo $FLOWCELL_PATH
-export FLOWCELL=$(echo $(pwd) | cut -d "/" -f5);echo $FLOWCELL
+export FLOWCELL=$(echo $PWD | rev | cut -d '/' -f 1 | rev); echo $FLOWCELL
 
 for i in Sample*;do
     cd "$i"/
